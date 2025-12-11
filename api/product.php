@@ -284,17 +284,29 @@ else if (($method === 'POST' || $method === 'PUT') && $is_update_action) {
 // D - DELETE (Soft)
 // ===================================================================
 else if (($method === 'POST' || $method === 'DELETE') && $is_delete_action) {
-    $stmt = $conn->prepare("UPDATE `product` SET `deleted_at` = 1 WHERE `product_id` = ? AND `company_id` = ?");
-    $stmt->bind_param("ss", $product_id, $company_id);
-    if ($stmt->execute() && $stmt->affected_rows > 0) {
-        $output["head"]["code"] = 200;
-        $output["head"]["msg"] = "Product deleted successfully.";
+
+    // Perform Soft Delete
+    $delete_sql = "UPDATE `product` SET `deleted_at` = 1 
+                   WHERE `id` = ? AND `company_id` = ?";
+    
+    $delete_stmt = $conn->prepare($delete_sql);
+    $delete_stmt->bind_param("is", $product_id, $company_id);
+
+    if ($delete_stmt->execute()) {
+        if ($delete_stmt->affected_rows > 0) {
+            $output["head"]["code"] = 200;
+            $output["head"]["msg"] = "Product deleted successfully."; 
+        } else {
+            $output["head"]["code"] = 404;
+            $output["head"]["msg"] = "Product not found or already deleted.";
+        }
     } else {
-        $output["head"]["code"] = 404;
-        $output["head"]["msg"] = "Product not found.";
+        $output["head"]["code"] = 400;
+        $output["head"]["msg"] = "Failed to delete Product. Error: " . $delete_stmt->error;
     }
-    $stmt->close();
-}
+    $delete_stmt->close();
+
+} 
 
 // ===================================================================
 // Fallback
